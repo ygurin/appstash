@@ -18,7 +18,7 @@
             <summary>Whether the stash popup is currently open</summary>
         </key>
         <key type="i" name="icon-size">
-            <default>16</default>
+            <default>18</default>
             <range min="8" max="64"/>
             <summary>Pixel size of indicator icons inside the stash popup</summary>
         </key>
