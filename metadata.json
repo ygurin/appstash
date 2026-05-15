@@ -1,0 +1,9 @@
+{
+    "name": "Appstash",
+    "description": "Collapsible system tray for GNOME. Stash top-bar indicators behind an arrow button and reveal them in a popup.",
+    "uuid": "appstash@ygurin.github.io",
+    "url": "https://github.com/ygurin/appstash",
+    "settings-schema": "org.gnome.shell.extensions.appstash",
+    "shell-version": ["50"],
+    "version-name": "0.1.0"
+}

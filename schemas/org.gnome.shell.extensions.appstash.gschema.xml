@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+    <schema id="org.gnome.shell.extensions.appstash" path="/org/gnome/shell/extensions/appstash/">
+        <key type="as" name="stashed-roles">
+            <default>[]</default>
+            <summary>Indicator roles hidden in the stash popup</summary>
+        </key>
+        <key type="as" name="known-roles">
+            <default>[]</default>
+            <summary>All indicator roles currently present on the panel; populated by the running extension and read by the preferences UI</summary>
+        </key>
+        <key type="b" name="hide-when-empty">
+            <default>false</default>
+            <summary>Hide the arrow button when no indicators are stashed</summary>
+        </key>
+        <key type="b" name="popup-open">
+            <default>false</default>
+            <summary>Whether the stash popup is currently open</summary>
+        </key>
+        <key type="i" name="icon-size">
+            <default>16</default>
+            <range min="8" max="64"/>
+            <summary>Pixel size of indicator icons inside the stash popup</summary>
+        </key>
+    </schema>
+</schemalist>
