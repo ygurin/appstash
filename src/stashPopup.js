@@ -141,18 +141,18 @@ export class StashController {
         const stashed = this._settings.get_strv('stashed-roles');
         if (stashed.length === 0) return [];
 
-        const containerToRole = new Map();
+        const nameToRole = new Map();
         for (const role in Main.panel.statusArea) {
             const ind = Main.panel.statusArea[role];
             if (!ind || !ind.container) continue;
-            containerToRole.set(ind.container, role);
+            const name = getRoleName(role);
+            if (name && !nameToRole.has(name)) nameToRole.set(name, role);
         }
 
         const result = [];
-        for (const child of Main.panel._rightBox.get_children()) {
-            const role = containerToRole.get(child);
-            if (!role) continue;
-            if (stashed.includes(getRoleName(role))) result.push(role);
+        for (const name of stashed) {
+            const role = nameToRole.get(name);
+            if (role) result.push(role);
         }
         return result;
     }
