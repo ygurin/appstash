@@ -9,10 +9,6 @@
             <default>[]</default>
             <summary>All indicator roles currently present on the panel; populated by the running extension and read by the preferences UI</summary>
         </key>
-        <key type="b" name="hide-when-empty">
-            <default>false</default>
-            <summary>Hide the arrow button when no indicators are stashed</summary>
-        </key>
         <key type="b" name="popup-open">
             <default>false</default>
             <summary>Whether the stash popup is currently open</summary>

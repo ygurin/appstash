@@ -35,13 +35,6 @@ export default class StashPage extends Adw.PreferencesPage {
     _buildBehaviorGroup() {
         const group = new Adw.PreferencesGroup({ title: _('Behavior') });
 
-        const hideRow = new Adw.SwitchRow({
-            title: _('Hide arrow button when stash is empty'),
-            subtitle: _('The arrow only appears once something is stashed.'),
-        });
-        this._settings.bind('hide-when-empty', hideRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        group.add(hideRow);
-
         const sizeRow = new Adw.SpinRow({
             title: _('Icon size'),
             subtitle: _('Pixel size of indicator icons inside the popup.'),

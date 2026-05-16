@@ -48,8 +48,6 @@ export default class AppstashExtension extends Extension {
         this._signalHandlers.push(
             this._settings.connect('changed::stashed-roles', () => this._applyStashState()));
         this._signalHandlers.push(
-            this._settings.connect('changed::hide-when-empty', () => this._updateButtonVisibility()));
-        this._signalHandlers.push(
             this._settings.connect('changed::icon-size', () => this._controller?.applyIconSizeToLifted?.()));
 
         Main.panel.addToStatusArea(this.uuid, this._button);
@@ -118,21 +116,5 @@ export default class AppstashExtension extends Extension {
         if (knownArr.length !== current.length || knownArr.some((r, i) => r !== current[i])) {
             this._settings.set_strv('known-roles', knownArr);
         }
-
-        this._updateButtonVisibility();
-    }
-
-    _updateButtonVisibility() {
-        if (!this._button) return;
-
-        const hideWhenEmpty = this._settings.get_boolean('hide-when-empty');
-        if (!hideWhenEmpty) {
-            this._button.show();
-            return;
-        }
-
-        const anyStashed = this._controller.getStashedRoles().length > 0;
-        if (anyStashed) this._button.show();
-        else this._button.hide();
     }
 }
