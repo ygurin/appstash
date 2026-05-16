@@ -22,5 +22,10 @@
             <range min="8" max="64"/>
             <summary>Pixel size of indicator icons inside the stash popup</summary>
         </key>
+        <key type="i" name="max-per-row">
+            <default>6</default>
+            <range min="1" max="32"/>
+            <summary>Maximum number of icons in one row of the popup; extras wrap to a new row</summary>
+        </key>
     </schema>
 </schemalist>

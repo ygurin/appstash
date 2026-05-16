@@ -55,6 +55,19 @@ export default class StashPage extends Adw.PreferencesPage {
         this._settings.bind('icon-size', sizeRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         group.add(sizeRow);
 
+        const perRow = new Adw.SpinRow({
+            title: _('Max icons per row'),
+            subtitle: _('Extras wrap onto a new row.'),
+            adjustment: new Gtk.Adjustment({
+                lower: 1,
+                upper: 32,
+                step_increment: 1,
+                page_increment: 2,
+            }),
+        });
+        this._settings.bind('max-per-row', perRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        group.add(perRow);
+
         this.add(group);
     }
 

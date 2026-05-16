@@ -8,7 +8,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import { getRoleName } from './utils.js';
 
-const ROW_STYLE = 'spacing: 16px; padding: 10px 16px;';
+const CONTAINER_STYLE = 'padding: 10px 16px; spacing: 6px;';
+const SUB_ROW_STYLE = 'spacing: 16px;';
 
 export class StashController {
     constructor({ menu, settings, openPreferences }) {
@@ -16,14 +17,15 @@ export class StashController {
         this._settings = settings;
         this._openPreferences = openPreferences;
         this._lifted = [];
+        this._subRows = [];
 
         this._row = new St.BoxLayout({
-            vertical: false,
+            vertical: true,
             x_expand: false,
             y_expand: false,
             x_align: Clutter.ActorAlign.START,
             y_align: Clutter.ActorAlign.CENTER,
-            style: ROW_STYLE,
+            style: CONTAINER_STYLE,
         });
         this._menu.box.add_child(this._row);
 
@@ -49,7 +51,6 @@ export class StashController {
                 console.log(`[Appstash] openPreferences failed: ${e}`);
             }
         });
-        this._row.add_child(this._cog);
 
         // Lift indicators before the menu grab is set up otherwise the grab snapshots the actor tree without them
         this._origMenuOpen = this._menu.open.bind(this._menu);
@@ -186,10 +187,31 @@ export class StashController {
         }
     }
 
+    _newSubRow() {
+        const sub = new St.BoxLayout({
+            vertical: false,
+            x_expand: false,
+            y_expand: false,
+            x_align: Clutter.ActorAlign.START,
+            y_align: Clutter.ActorAlign.CENTER,
+            style: SUB_ROW_STYLE,
+        });
+        this._row.add_child(sub);
+        this._subRows.push(sub);
+        return sub;
+    }
+
     _lift() {
         const roles = this.getStashedRoles();
+        const maxPerRow = Math.max(1, this._settings.get_int('max-per-row'));
 
-        for (const role of roles) {
+        // total slots = stashed indicators + the trailing cog
+        const total = roles.length + 1;
+        const rowCount = Math.ceil(total / maxPerRow);
+        for (let i = 0; i < rowCount; i++) this._newSubRow();
+
+        for (let i = 0; i < roles.length; i++) {
+            const role = roles[i];
             const indicator = Main.panel.statusArea[role];
             if (!indicator?.container) continue;
 
@@ -208,14 +230,16 @@ export class StashController {
             });
 
             parent.remove_child(container);
-            if (this._cog && this._cog.get_parent() === this._row) {
-                this._row.insert_child_below(container, this._cog);
-            } else {
-                this._row.add_child(container);
-            }
+            const rowIdx = Math.floor(i / maxPerRow);
+            this._subRows[rowIdx].add_child(container);
             container.show();
             this._applyIconSize(container);
         }
+
+        if (this._cog?.get_parent()) {
+            this._cog.get_parent().remove_child(this._cog);
+        }
+        this._subRows[this._subRows.length - 1].add_child(this._cog);
     }
 
     _restore() {
@@ -235,6 +259,12 @@ export class StashController {
             }
         }
         this._lifted = [];
+
+        if (this._cog?.get_parent()) {
+            this._cog.get_parent().remove_child(this._cog);
+        }
+        for (const sub of this._subRows) sub.destroy();
+        this._subRows = [];
     }
 
     destroy() {
