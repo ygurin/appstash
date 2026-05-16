@@ -4,9 +4,13 @@ A collapsible system tray for GNOME. Stash top-bar indicators behind an arrow bu
 
 ![demo](demo.gif)
 
+## Purpose
+
+In Gnome 2026 I could find not any extension that provides a System Tray to hide icons. An Gnome extension [Lilypad](https://github.com/shendrew/Lilypad) works, but fails to solve the issue of icons overlaying on top of the Gnome Clock.
+
 ## Status
 
-**Proof of concept.** Written end-to-end with [Claude](https://claude.ai) (Anthropic's coding assistant) as an experimental GNOME Shell extension.  Use it, fork it, learn from it — but don't expect issues to be triaged or features to land.
+**Proof of concept.** Written using generative AI tools as an experimental GNOME Shell extension.  Use it, fork it, learn from it. This is purely experimental I do not intend to support it in the future.
 
 Targets GNOME Shell version:
 
