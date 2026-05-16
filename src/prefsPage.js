@@ -67,17 +67,17 @@ export default class StashPage extends Adw.PreferencesPage {
     _buildListsGroup() {
         const stashedGroup = new Adw.PreferencesGroup({
             title: _('Stashed'),
-            description: _('Indicators hidden behind the arrow. Drag to reorder, or drag back to "Available" to unstash.'),
+            description: _('Indicators hidden behind the arrow. Drag to reorder. Use the remove button to unstash.'),
         });
-        this._stashedList = this._makeListBox();
+        this._stashedList = this._makeStashedListBox();
         stashedGroup.add(this._wrap(this._stashedList));
         this.add(stashedGroup);
 
         const availableGroup = new Adw.PreferencesGroup({
             title: _('Available'),
-            description: _('Indicators currently visible in the panel. Drag into "Stashed" to hide them behind the arrow.'),
+            description: _('Indicators currently visible in the panel. Click one to move it into "Stashed".'),
         });
-        this._availableList = this._makeListBox();
+        this._availableList = this._makeAvailableListBox();
         availableGroup.add(this._wrap(this._availableList));
         this.add(availableGroup);
 
@@ -105,21 +105,37 @@ export default class StashPage extends Adw.PreferencesPage {
         return clamp;
     }
 
-    _makeListBox() {
+    _makeStashedListBox() {
         const lb = new Gtk.ListBox({ css_classes: ['boxed-list'] });
         const target = Gtk.DropTarget.new(Gtk.ListBoxRow, Gdk.DragAction.MOVE);
         lb.add_controller(target);
-        target.connect('drop', (_t, value, _x, y) => this._onDrop(lb, value, y));
+        target.connect('drop', (_t, value, _x, y) => this._onReorderDrop(value, y));
         return lb;
     }
 
-    _addRow(listbox, name) {
+    _makeAvailableListBox() {
+        return new Gtk.ListBox({
+            css_classes: ['boxed-list'],
+            selection_mode: Gtk.SelectionMode.NONE,
+        });
+    }
+
+    _addStashedRow(name) {
         const row = new Adw.ActionRow({ title: name, selectable: false });
 
         row.add_prefix(new Gtk.Image({
             icon_name: 'list-drag-handle-symbolic',
             css_classes: ['dim-label'],
         }));
+
+        const removeButton = new Gtk.Button({
+            icon_name: 'window-close-symbolic',
+            css_classes: ['flat'],
+            valign: Gtk.Align.CENTER,
+            tooltip_text: _('Move back to Available'),
+        });
+        removeButton.connect('clicked', () => this._unstash(name));
+        row.add_suffix(removeButton);
 
         const dragSource = new Gtk.DragSource({ actions: Gdk.DragAction.MOVE });
         row.add_controller(dragSource);
@@ -146,24 +162,49 @@ export default class StashPage extends Adw.PreferencesPage {
             icon.child = dragWidget;
         });
 
-        listbox.append(row);
+        this._stashedList.append(row);
     }
 
-    _onDrop(targetList, value, y) {
+    _addAvailableRow(name) {
+        const row = new Adw.ActionRow({
+            title: name,
+            activatable: true,
+            selectable: false,
+        });
+        row.add_suffix(new Gtk.Image({
+            icon_name: 'list-add-symbolic',
+            css_classes: ['dim-label'],
+        }));
+        row.connect('activated', () => this._stash(name));
+        this._availableList.append(row);
+    }
+
+    _stash(name) {
+        const stashed = this._settings.get_strv('stashed-roles');
+        if (stashed.includes(name)) return;
+        stashed.push(name);
+        this._settings.set_strv('stashed-roles', stashed);
+    }
+
+    _unstash(name) {
+        const stashed = this._settings.get_strv('stashed-roles').filter(r => r !== name);
+        this._settings.set_strv('stashed-roles', stashed);
+    }
+
+    _onReorderDrop(value, y) {
         if (!value) return false;
         const draggedName = value.title;
         if (!draggedName) return false;
 
-        const targetRow = targetList.get_row_at_y(y);
+        const targetRow = this._stashedList.get_row_at_y(y);
         const targetIndex = targetRow ? targetRow.get_index() : -1;
 
         let stashed = this._settings.get_strv('stashed-roles');
-        stashed = stashed.filter(r => r !== draggedName);
+        if (!stashed.includes(draggedName)) return false;
 
-        if (targetList === this._stashedList) {
-            const idx = targetIndex >= 0 ? targetIndex : stashed.length;
-            stashed.splice(idx, 0, draggedName);
-        }
+        stashed = stashed.filter(r => r !== draggedName);
+        const idx = targetIndex >= 0 ? targetIndex : stashed.length;
+        stashed.splice(idx, 0, draggedName);
 
         this._settings.set_strv('stashed-roles', stashed);
         return true;
@@ -180,9 +221,9 @@ export default class StashPage extends Adw.PreferencesPage {
         const stashedSet = new Set(stashed);
 
         if (stashed.length === 0) {
-            this._addPlaceholder(this._stashedList, _('Drop indicators here to hide them.'));
+            this._addPlaceholder(this._stashedList, _('No indicators stashed. Click one in "Available" to hide it.'));
         } else {
-            for (const name of stashed) this._addRow(this._stashedList, name);
+            for (const name of stashed) this._addStashedRow(name);
         }
 
         const available = known.filter(n => !stashedSet.has(n));
@@ -191,7 +232,7 @@ export default class StashPage extends Adw.PreferencesPage {
                 ? _('No indicators detected yet. Enable Appstash first.')
                 : _('All known indicators are currently stashed.'));
         } else {
-            for (const name of available) this._addRow(this._availableList, name);
+            for (const name of available) this._addAvailableRow(name);
         }
     }
 
