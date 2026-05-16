@@ -29,6 +29,9 @@ export class StashController {
         });
         this._menu.box.add_child(this._row);
 
+        this._menu.box.style = 'min-width: 0; padding: 0;';
+        this._applyPopupBounds();
+
         this._cogIcon = new St.Icon({
             icon_name: 'emblem-system-symbolic',
             icon_size: this._settings.get_int('icon-size'),
@@ -164,6 +167,29 @@ export class StashController {
             this._applyIconSize(container);
         }
         if (this._cogIcon) this._cogIcon.icon_size = size;
+        this._applyPopupBounds();
+    }
+
+    // Force the popup to be exactly as wide as its current row content
+    // This is done due to popup-menu styling constraints
+    _applyPopupBounds() {
+        if (!this._menu?.actor) return;
+        const iconSize = this._settings.get_int('icon-size');
+        const maxPerRow = Math.max(1, this._settings.get_int('max-per-row'));
+
+        const spacing = 16;
+        const padding = 32;
+
+        const items = (this._lifted?.length || 0) + 1; // include cog
+        const widestRow = Math.min(items, maxPerRow);
+        const w = widestRow * iconSize + Math.max(0, widestRow - 1) * spacing + padding;
+
+        this._menu.actor.style =
+            `min-width: ${w}px; max-width: ${w}px; width: ${w}px;`;
+        try {
+            this._menu.actor.set_width(w);
+        } catch (_) {}
+        console.log(`[Appstash] popup width: items=${items} widestRow=${widestRow} w=${w}px`);
     }
 
     _applyIconSize(container) {
@@ -240,6 +266,8 @@ export class StashController {
             this._cog.get_parent().remove_child(this._cog);
         }
         this._subRows[this._subRows.length - 1].add_child(this._cog);
+
+        this._applyPopupBounds();
     }
 
     _restore() {
