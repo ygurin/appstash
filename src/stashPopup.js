@@ -149,7 +149,7 @@ export class StashController {
         for (const role in Main.panel.statusArea) {
             const ind = Main.panel.statusArea[role];
             if (!ind || !ind.container) continue;
-            const name = getRoleName(role);
+            const name = getRoleName(role, ind);
             if (name && !nameToRole.has(name)) nameToRole.set(name, role);
         }
 
@@ -189,7 +189,6 @@ export class StashController {
         try {
             this._menu.actor.set_width(w);
         } catch (_) {}
-        console.log(`[Appstash] popup width: items=${items} widestRow=${widestRow} w=${w}px`);
     }
 
     _applyIconSize(container) {

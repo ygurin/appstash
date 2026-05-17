@@ -8,6 +8,8 @@ import Gtk from 'gi://Gtk';
 
 import { gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+import { getDisplayName } from './utils.js';
+
 export default class StashPage extends Adw.PreferencesPage {
     static {
         GObject.registerClass({ GTypeName: 'AppstashPrefsPage' }, this);
@@ -121,7 +123,9 @@ export default class StashPage extends Adw.PreferencesPage {
     }
 
     _addStashedRow(name) {
-        const row = new Adw.ActionRow({ title: name, selectable: false });
+        const label = getDisplayName(name);
+        const row = new Adw.ActionRow({ title: label, selectable: false });
+        row._appstashName = name;
 
         row.add_prefix(new Gtk.Image({
             icon_name: 'list-drag-handle-symbolic',
@@ -151,7 +155,7 @@ export default class StashPage extends Adw.PreferencesPage {
             const dragWidget = new Gtk.ListBox();
             dragWidget.set_size_request(row.get_width(), row.get_height());
             dragWidget.add_css_class('boxed-list');
-            const dragRow = new Adw.ActionRow({ title: name });
+            const dragRow = new Adw.ActionRow({ title: label });
             dragRow.add_prefix(new Gtk.Image({
                 icon_name: 'list-drag-handle-symbolic',
                 css_classes: ['dim-label'],
@@ -167,10 +171,11 @@ export default class StashPage extends Adw.PreferencesPage {
 
     _addAvailableRow(name) {
         const row = new Adw.ActionRow({
-            title: name,
+            title: getDisplayName(name),
             activatable: true,
             selectable: false,
         });
+        row._appstashName = name;
         row.add_suffix(new Gtk.Image({
             icon_name: 'list-add-symbolic',
             css_classes: ['dim-label'],
@@ -193,7 +198,7 @@ export default class StashPage extends Adw.PreferencesPage {
 
     _onReorderDrop(value, y) {
         if (!value) return false;
-        const draggedName = value.title;
+        const draggedName = value._appstashName;
         if (!draggedName) return false;
 
         const targetRow = this._stashedList.get_row_at_y(y);

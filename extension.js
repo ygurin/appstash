@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -42,6 +43,10 @@ export default class AppstashExtension extends Extension {
         Panel.Panel.prototype.addToStatusArea = function (role, indicator, position, box) {
             this._appstashOriginalAddToStatusArea(role, indicator, position, box);
             self._applyStashState();
+            // SNI proxies populate id/_commandLine asynchronously; re-run
+            // shortly so late-arriving fields produce the correct key in
+            // known-roles instead of the generic "StatusNotifierItem" fallback.
+            self._scheduleDeferredRefresh();
         };
 
         this._signalHandlers = [];
@@ -59,7 +64,20 @@ export default class AppstashExtension extends Extension {
         this._applyStashState();
     }
 
+    _scheduleDeferredRefresh() {
+        if (this._deferredRefreshId) return;
+        this._deferredRefreshId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
+            this._deferredRefreshId = 0;
+            this._applyStashState();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     disable() {
+        if (this._deferredRefreshId) {
+            GLib.source_remove(this._deferredRefreshId);
+            this._deferredRefreshId = 0;
+        }
         if (this._button?.menu?.isOpen) this._button.menu.close();
 
         for (const role in Main.panel.statusArea) {
@@ -102,7 +120,7 @@ export default class AppstashExtension extends Extension {
             if (!ind?.container) continue;
             if (ind === this._button) continue;
 
-            const name = getRoleName(role);
+            const name = getRoleName(role, ind);
             if (name) known.add(name);
 
             const isStashed = stashed.has(name);
