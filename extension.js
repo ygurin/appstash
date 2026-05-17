@@ -53,8 +53,6 @@ export default class AppstashExtension extends Extension {
         this._signalHandlers.push(
             this._settings.connect('changed::stashed-roles', () => this._applyStashState()));
         this._signalHandlers.push(
-            this._settings.connect('changed::known-roles', () => this._applyPanelOrder()));
-        this._signalHandlers.push(
             this._settings.connect('changed::icon-size', () => this._controller?.applyIconSizeToLifted?.()));
 
         Main.panel.addToStatusArea(this.uuid, this._button);
@@ -116,14 +114,14 @@ export default class AppstashExtension extends Extension {
         const stashed = new Set(this._settings.get_strv('stashed-roles'));
         const popupOpen = this._button.menu?.isOpen;
 
-        const present = new Set();
+        const known = new Set();
         for (const role in Main.panel.statusArea) {
             const ind = Main.panel.statusArea[role];
             if (!ind?.container) continue;
             if (ind === this._button) continue;
 
             const name = getRoleName(role, ind);
-            if (name) present.add(name);
+            if (name) known.add(name);
 
             const isStashed = stashed.has(name);
             // The controller owns lifted actors while the popup is open
@@ -131,66 +129,10 @@ export default class AppstashExtension extends Extension {
             ind.container.visible = !isStashed;
         }
 
-        // Preserve user-set order; drop disappeared roles; append new ones.
-        const existing = this._settings.get_strv('known-roles');
-        const preserved = existing.filter(n => present.has(n));
-        const additions = [...present].filter(n => !preserved.includes(n));
-        const newKnown = [...preserved, ...additions];
-        if (newKnown.length !== existing.length || newKnown.some((r, i) => r !== existing[i])) {
-            this._settings.set_strv('known-roles', newKnown);
+        const knownArr = [...known].sort();
+        const current = this._settings.get_strv('known-roles');
+        if (knownArr.length !== current.length || knownArr.some((r, i) => r !== current[i])) {
+            this._settings.set_strv('known-roles', knownArr);
         }
-
-        this._applyPanelOrder();
-    }
-
-    // Reorder unstashed managed indicators in Main.panel._rightBox to match
-    // known-roles order. Only the slots currently occupied by our managed
-    // unstashed actors are touched; other actors (system tray, quickSettings)
-    // keep their positions.
-    _applyPanelOrder() {
-        if (!this._settings || !this._button) return;
-
-        const order = this._settings.get_strv('known-roles');
-        const stashed = new Set(this._settings.get_strv('stashed-roles'));
-
-        const nameToContainer = new Map();
-        for (const role in Main.panel.statusArea) {
-            const a = Main.panel.statusArea[role];
-            if (!a?.container || a === this._button) continue;
-            const n = getRoleName(role, a);
-            if (n && !nameToContainer.has(n)) nameToContainer.set(n, a.container);
-        }
-
-        const desired = order
-            .filter(n => !stashed.has(n) && nameToContainer.has(n))
-            .map(n => nameToContainer.get(n));
-        if (desired.length === 0) return;
-
-        const rb = Main.panel._rightBox;
-        const children = rb.get_children();
-
-        const managedSet = new Set(desired);
-        const slots = [];
-        const currentManagedOrder = [];
-        children.forEach((c, idx) => {
-            if (managedSet.has(c)) {
-                slots.push(idx);
-                currentManagedOrder.push(c);
-            }
-        });
-
-        const same = currentManagedOrder.length === desired.length &&
-            currentManagedOrder.every((c, i) => c === desired[i]);
-        if (same) return;
-
-        // Remove in reverse so earlier indices stay valid, then reinsert
-        // at the same slot indices in ascending order with the new sequence.
-        for (let i = currentManagedOrder.length - 1; i >= 0; i--) {
-            const c = currentManagedOrder[i];
-            if (c.get_parent() === rb) rb.remove_child(c);
-        }
-        slots.forEach((idx, i) => {
-            rb.insert_child_at_index(desired[i], idx);
-        });
     }
 }
