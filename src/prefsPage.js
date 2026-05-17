@@ -75,14 +75,6 @@ export default class StashPage extends Adw.PreferencesPage {
         stashedGroup.add(this._wrap(this._stashedList));
         this.add(stashedGroup);
 
-        const availableGroup = new Adw.PreferencesGroup({
-            title: _('Available'),
-            description: _('Indicators currently visible in the panel. Click one to move it into "Stashed".'),
-        });
-        this._availableList = this._makeAvailableListBox();
-        availableGroup.add(this._wrap(this._availableList));
-        this.add(availableGroup);
-
         const clearButton = new Gtk.Button({
             label: _('Clear stash'),
             css_classes: ['destructive-action'],
@@ -97,6 +89,14 @@ export default class StashPage extends Adw.PreferencesPage {
             header_suffix: clearButton,
         });
         this.add(clearGroup);
+
+        const availableGroup = new Adw.PreferencesGroup({
+            title: _('Available'),
+            description: _('Indicators currently visible in the panel. Click one to move it into "Stashed".'),
+        });
+        this._availableList = this._makeAvailableListBox();
+        availableGroup.add(this._wrap(this._availableList));
+        this.add(availableGroup);
 
         this._rebuildLists();
     }
