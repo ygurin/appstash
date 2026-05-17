@@ -92,7 +92,7 @@ export default class StashPage extends Adw.PreferencesPage {
 
         const availableGroup = new Adw.PreferencesGroup({
             title: _('Available'),
-            description: _('Indicators currently visible in the panel. Click one to move it into "Stashed".'),
+            description: _('Indicators currently visible in the panel. Click one to move it into "Stashed". Drag to reorder their position on the panel.'),
         });
         this._availableList = this._makeAvailableListBox();
         availableGroup.add(this._wrap(this._availableList));
@@ -116,10 +116,14 @@ export default class StashPage extends Adw.PreferencesPage {
     }
 
     _makeAvailableListBox() {
-        return new Gtk.ListBox({
+        const lb = new Gtk.ListBox({
             css_classes: ['boxed-list'],
             selection_mode: Gtk.SelectionMode.NONE,
         });
+        const target = Gtk.DropTarget.new(Gtk.ListBoxRow, Gdk.DragAction.MOVE);
+        lb.add_controller(target);
+        target.connect('drop', (_t, value, _x, y) => this._onAvailableReorderDrop(value, y));
+        return lb;
     }
 
     _addStashedRow(name) {
@@ -170,18 +174,85 @@ export default class StashPage extends Adw.PreferencesPage {
     }
 
     _addAvailableRow(name) {
+        const label = getDisplayName(name);
         const row = new Adw.ActionRow({
-            title: getDisplayName(name),
+            title: label,
             activatable: true,
             selectable: false,
         });
         row._appstashName = name;
+
+        row.add_prefix(new Gtk.Image({
+            icon_name: 'list-drag-handle-symbolic',
+            css_classes: ['dim-label'],
+        }));
         row.add_suffix(new Gtk.Image({
             icon_name: 'list-add-symbolic',
             css_classes: ['dim-label'],
         }));
         row.connect('activated', () => this._stash(name));
+
+        const dragSource = new Gtk.DragSource({ actions: Gdk.DragAction.MOVE });
+        row.add_controller(dragSource);
+
+        dragSource.connect('prepare', () => {
+            const v = new GObject.Value();
+            v.init(Gtk.ListBoxRow);
+            v.set_object(row);
+            return Gdk.ContentProvider.new_for_value(v);
+        });
+
+        dragSource.connect('drag-begin', (_s, drag) => {
+            const dragWidget = new Gtk.ListBox();
+            dragWidget.set_size_request(row.get_width(), row.get_height());
+            dragWidget.add_css_class('boxed-list');
+            const dragRow = new Adw.ActionRow({ title: label });
+            dragRow.add_prefix(new Gtk.Image({
+                icon_name: 'list-drag-handle-symbolic',
+                css_classes: ['dim-label'],
+            }));
+            dragWidget.append(dragRow);
+            dragWidget.drag_highlight_row(dragRow);
+            const icon = Gtk.DragIcon.get_for_drag(drag);
+            icon.child = dragWidget;
+        });
+
         this._availableList.append(row);
+    }
+
+    _onAvailableReorderDrop(value, y) {
+        if (!value) return false;
+        const draggedName = value._appstashName;
+        if (!draggedName) return false;
+
+        const targetRow = this._availableList.get_row_at_y(y);
+        const targetIndex = targetRow ? targetRow.get_index() : -1;
+
+        const known = this._settings.get_strv('known-roles');
+        const stashedSet = new Set(this._settings.get_strv('stashed-roles'));
+        const available = known.filter(n => !stashedSet.has(n));
+        if (!available.includes(draggedName)) return false;
+
+        const without = available.filter(n => n !== draggedName);
+        const insertIdx = targetIndex >= 0 && targetIndex < available.length
+            ? Math.min(targetIndex, without.length)
+            : without.length;
+        without.splice(insertIdx, 0, draggedName);
+
+        // Rebuild known-roles: walk existing order, replace non-stashed slots
+        // with the reordered Available sequence; stashed slots keep their place.
+        const newKnown = [];
+        let availIdx = 0;
+        for (const n of known) {
+            if (stashedSet.has(n)) {
+                newKnown.push(n);
+            } else if (availIdx < without.length) {
+                newKnown.push(without[availIdx++]);
+            }
+        }
+
+        this._settings.set_strv('known-roles', newKnown);
+        return true;
     }
 
     _stash(name) {
