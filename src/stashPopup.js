@@ -250,8 +250,18 @@ export class StashController {
                 yExpand: container.y_expand,
             };
 
-            this._lifted.push({
+            const entry = {
                 role, container, originalParent: parent, originalIndex, originalSize,
+                destroyId: 0,
+            };
+            this._lifted.push(entry);
+
+            // If the app exits while lifted the container gets disposed.
+            // Drop it from _lifted synchronously so _restore wont touch a dead actor.
+            entry.destroyId = container.connect('destroy', () => {
+                const idx = this._lifted.indexOf(entry);
+                if (idx >= 0) this._lifted.splice(idx, 1);
+                try { this._applyPopupBounds(); } catch (_) {}
             });
 
             parent.remove_child(container);
@@ -271,26 +281,36 @@ export class StashController {
 
     _restore() {
         for (let i = this._lifted.length - 1; i >= 0; i--) {
-            const { container, originalParent, originalIndex, originalSize } = this._lifted[i];
+            const { container, originalParent, originalIndex, originalSize, destroyId } = this._lifted[i];
 
-            const currentParent = container.get_parent();
-            if (currentParent) currentParent.remove_child(container);
+            if (destroyId) {
+                try { container.disconnect(destroyId); } catch (_) {}
+            }
 
-            container.set_size(-1, -1);
-            container.set_x_expand(originalSize?.xExpand ?? true);
-            container.set_y_expand(originalSize?.yExpand ?? true);
+            try {
+                const currentParent = container.get_parent();
+                if (currentParent) currentParent.remove_child(container);
 
-            if (originalParent) {
-                const max = originalParent.get_n_children();
-                originalParent.insert_child_at_index(container, Math.min(originalIndex, max));
+                container.set_size(-1, -1);
+                container.set_x_expand(originalSize?.xExpand ?? true);
+                container.set_y_expand(originalSize?.yExpand ?? true);
+
+                if (originalParent) {
+                    const max = originalParent.get_n_children();
+                    originalParent.insert_child_at_index(container, Math.min(originalIndex, max));
+                }
+            } catch (e) {
+                console.log(`[Appstash] _restore: skipping disposed actor: ${e}`);
             }
         }
         this._lifted = [];
 
         if (this._cog?.get_parent()) {
-            this._cog.get_parent().remove_child(this._cog);
+            try { this._cog.get_parent().remove_child(this._cog); } catch (_) {}
         }
-        for (const sub of this._subRows) sub.destroy();
+        for (const sub of this._subRows) {
+            try { sub.destroy(); } catch (_) {}
+        }
         this._subRows = [];
     }
 

@@ -120,13 +120,17 @@ export default class AppstashExtension extends Extension {
             if (!ind?.container) continue;
             if (ind === this._button) continue;
 
-            const name = getRoleName(role, ind);
-            if (name) known.add(name);
+            try {
+                const name = getRoleName(role, ind);
+                if (name) known.add(name);
 
-            const isStashed = stashed.has(name);
-            // The controller owns lifted actors while the popup is open
-            if (popupOpen && isStashed) continue;
-            ind.container.visible = !isStashed;
+                const isStashed = stashed.has(name);
+                // The controller owns lifted actors while the popup is open
+                if (popupOpen && isStashed) continue;
+                ind.container.visible = !isStashed;
+            } catch (_) {
+                // Indicator GObject is being disposed (app exiting); skip it.
+            }
         }
 
         const knownArr = [...known].sort();
