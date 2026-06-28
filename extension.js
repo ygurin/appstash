@@ -69,8 +69,20 @@ export default class AppstashExtension extends Extension {
 
         // Panel position (e.g. dash-to-panel bottom/left/right) is only known
         // after the button has been allocated; defer to the next idle.
-        this._iconInitId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
-            this._iconInitId = 0;
+        this._scheduleIconUpdate();
+
+        // Re-evaluate when the button is reparented or moves/resizes —
+        // dash-to-panel emits both when the panel switches sides.
+        this._allocChangedId = this._button.connect(
+            'notify::allocation', () => this._scheduleIconUpdate());
+        this._parentSetId = this._button.connect(
+            'parent-set', () => this._scheduleIconUpdate());
+    }
+
+    _scheduleIconUpdate() {
+        if (this._iconUpdateId) return;
+        this._iconUpdateId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._iconUpdateId = 0;
             this._updateIcon();
             return GLib.SOURCE_REMOVE;
         });
@@ -128,9 +140,17 @@ export default class AppstashExtension extends Extension {
             GLib.source_remove(this._deferredRefreshId);
             this._deferredRefreshId = 0;
         }
-        if (this._iconInitId) {
-            GLib.source_remove(this._iconInitId);
-            this._iconInitId = 0;
+        if (this._iconUpdateId) {
+            GLib.source_remove(this._iconUpdateId);
+            this._iconUpdateId = 0;
+        }
+        if (this._allocChangedId && this._button) {
+            this._button.disconnect(this._allocChangedId);
+            this._allocChangedId = 0;
+        }
+        if (this._parentSetId && this._button) {
+            this._button.disconnect(this._parentSetId);
+            this._parentSetId = 0;
         }
         if (this._button?.menu?.isOpen) this._button.menu.close();
 
