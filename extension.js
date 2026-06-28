@@ -22,6 +22,7 @@ const ICONS_BY_SIDE = {
 export default class AppstashExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
+        this._enableTime = GLib.get_monotonic_time();
 
         this._button = new PanelMenu.Button(0.5, _('Appstash'), false);
         this._icon = new St.Icon({
@@ -126,6 +127,22 @@ export default class AppstashExtension extends Extension {
         this._icon.icon_name = isOpen ? icons.open : icons.closed;
     }
 
+    _isWarmedUp() {
+        if (!this._enableTime) return false;
+        return (GLib.get_monotonic_time() - this._enableTime) > 3_000_000;
+    }
+
+    _flashIcon() {
+        if (!this._button) return;
+        this._button.add_style_pseudo_class('hover');
+        if (this._flashTimeoutId) GLib.source_remove(this._flashTimeoutId);
+        this._flashTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 400, () => {
+            this._flashTimeoutId = 0;
+            this._button?.remove_style_pseudo_class('hover');
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     _scheduleDeferredRefresh() {
         if (this._deferredRefreshId) return;
         this._deferredRefreshId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
@@ -143,6 +160,11 @@ export default class AppstashExtension extends Extension {
         if (this._iconUpdateId) {
             GLib.source_remove(this._iconUpdateId);
             this._iconUpdateId = 0;
+        }
+        if (this._flashTimeoutId) {
+            GLib.source_remove(this._flashTimeoutId);
+            this._flashTimeoutId = 0;
+            this._button?.remove_style_pseudo_class('hover');
         }
         if (this._allocChangedId && this._button) {
             this._button.disconnect(this._allocChangedId);
@@ -189,6 +211,7 @@ export default class AppstashExtension extends Extension {
         const popupOpen = this._button.menu?.isOpen;
 
         const known = new Set();
+        let newlyStashed = false;
         for (const role in Main.panel.statusArea) {
             const ind = Main.panel.statusArea[role];
             if (!ind?.container) continue;
@@ -201,11 +224,19 @@ export default class AppstashExtension extends Extension {
                 const isStashed = stashed.has(name);
                 // The controller owns lifted actors while the popup is open
                 if (popupOpen && isStashed) continue;
+
+                const wasVisible = ind.container.visible;
                 ind.container.visible = !isStashed;
+                if (wasVisible && isStashed) newlyStashed = true;
             } catch (_) {
                 // Indicator GObject is being disposed (app exiting); skip it.
             }
         }
+
+        // Flash the button when an indicator drops into the tray so the user
+        // sees where it went. Suppress during the warm-up window so the
+        // initial sweep at shell-start doesnt flash for every stashed app.
+        if (newlyStashed && this._isWarmedUp()) this._flashIcon();
 
         const knownArr = [...known].sort();
         const current = this._settings.get_strv('known-roles');
