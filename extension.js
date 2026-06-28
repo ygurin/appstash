@@ -12,8 +12,12 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import { StashController } from './src/stashPopup.js';
 import { getRoleName } from './src/utils.js';
 
-const ICON_CLOSED = 'pan-up-symbolic';
-const ICON_OPEN = 'pan-down-symbolic';
+const ICONS_BY_SIDE = {
+    [St.Side.TOP]:    { closed: 'pan-down-symbolic',  open: 'pan-up-symbolic'    },
+    [St.Side.BOTTOM]: { closed: 'pan-up-symbolic',    open: 'pan-down-symbolic'  },
+    [St.Side.LEFT]:   { closed: 'pan-end-symbolic',   open: 'pan-start-symbolic' },
+    [St.Side.RIGHT]:  { closed: 'pan-start-symbolic', open: 'pan-end-symbolic'   },
+};
 
 export default class AppstashExtension extends Extension {
     enable() {
@@ -21,7 +25,7 @@ export default class AppstashExtension extends Extension {
 
         this._button = new PanelMenu.Button(0.5, _('Appstash'), false);
         this._icon = new St.Icon({
-            icon_name: ICON_CLOSED,
+            icon_name: ICONS_BY_SIDE[St.Side.TOP].closed,
             style_class: 'system-status-icon',
         });
         this._button.add_child(this._icon);
@@ -33,7 +37,7 @@ export default class AppstashExtension extends Extension {
         });
 
         this._popupStateId = this._button.menu.connect('open-state-changed', (_m, isOpen) => {
-            this._icon.icon_name = isOpen ? ICON_OPEN : ICON_CLOSED;
+            this._updateIcon();
             if (!isOpen) this._applyStashState();
         });
 
@@ -62,6 +66,52 @@ export default class AppstashExtension extends Extension {
         Main.panel.menuManager.removeMenu(this._button.menu);
 
         this._applyStashState();
+
+        // Panel position (e.g. dash-to-panel bottom/left/right) is only known
+        // after the button has been allocated; defer to the next idle.
+        this._iconInitId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this._iconInitId = 0;
+            this._updateIcon();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _detectPanelSide() {
+        const actor = this._button;
+        if (!actor) return St.Side.TOP;
+
+        const [x, y] = actor.get_transformed_position();
+        const [w, h] = actor.get_transformed_size();
+        if (!Number.isFinite(x) || !Number.isFinite(y) || (w === 0 && h === 0))
+            return St.Side.TOP;
+
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+
+        const monitor = Main.layoutManager.monitors.find(m =>
+            cx >= m.x && cx < m.x + m.width &&
+            cy >= m.y && cy < m.y + m.height
+        ) || Main.layoutManager.primaryMonitor;
+        if (!monitor) return St.Side.TOP;
+
+        // Whichever monitor edge the button hugs most closely is the panel side.
+        const dTop    = y - monitor.y;
+        const dBottom = (monitor.y + monitor.height) - (y + h);
+        const dLeft   = x - monitor.x;
+        const dRight  = (monitor.x + monitor.width) - (x + w);
+
+        const minD = Math.min(dTop, dBottom, dLeft, dRight);
+        if (minD === dTop)    return St.Side.TOP;
+        if (minD === dBottom) return St.Side.BOTTOM;
+        if (minD === dLeft)   return St.Side.LEFT;
+        return St.Side.RIGHT;
+    }
+
+    _updateIcon() {
+        if (!this._icon) return;
+        const icons = ICONS_BY_SIDE[this._detectPanelSide()] || ICONS_BY_SIDE[St.Side.TOP];
+        const isOpen = this._button?.menu?.isOpen;
+        this._icon.icon_name = isOpen ? icons.open : icons.closed;
     }
 
     _scheduleDeferredRefresh() {
@@ -77,6 +127,10 @@ export default class AppstashExtension extends Extension {
         if (this._deferredRefreshId) {
             GLib.source_remove(this._deferredRefreshId);
             this._deferredRefreshId = 0;
+        }
+        if (this._iconInitId) {
+            GLib.source_remove(this._iconInitId);
+            this._iconInitId = 0;
         }
         if (this._button?.menu?.isOpen) this._button.menu.close();
 
