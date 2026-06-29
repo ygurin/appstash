@@ -18,7 +18,7 @@ Targets GNOME Shell version:
 
 ## What it does
 
-- Adds an arrow button to the top bar (`^` closed, `V` open).
+- Adds an arrow button to the top bar (`V` closed, `^` open).
 - In preferences, pick which top-bar indicators to "stash".
 - Stashed indicators are hidden from the panel; clicking the arrow reveals them in a popup row.
 - A cog icon at the end of the popup opens preferences.
