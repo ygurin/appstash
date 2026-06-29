@@ -251,17 +251,25 @@ export class StashController {
             };
 
             const entry = {
-                role, container, originalParent: parent, originalIndex, originalSize,
+                role, indicator, container, originalParent: parent, originalIndex, originalSize,
                 destroyId: 0,
+                indicatorDestroyId: 0,
             };
             this._lifted.push(entry);
 
-            // If the app exits while lifted the container gets disposed.
-            // Drop it from _lifted synchronously so _restore wont touch a dead actor.
+            // If the container itself is disposed, drop synchronously so
+            // _restore wont touch a dead actor.
             entry.destroyId = container.connect('destroy', () => {
-                const idx = this._lifted.indexOf(entry);
-                if (idx >= 0) this._lifted.splice(idx, 1);
-                try { this._applyPopupBounds(); } catch (_) {}
+                this._dropEntry(entry, false);
+            });
+
+            // AppIndicator typically destroys the indicator when the app quits.
+            // Before container.destroy fires (or instead of it) the indicator
+            // can leave its container parented in our sub-row as an empty
+            // St.Bin, showing a gap until something forces a relayout. Catch
+            // that here and evict the container ourselves.
+            entry.indicatorDestroyId = indicator.connect('destroy', () => {
+                this._dropEntry(entry, true);
             });
 
             parent.remove_child(container);
@@ -279,12 +287,44 @@ export class StashController {
         this._applyPopupBounds();
     }
 
+    _dropEntry(entry, evictContainer) {
+        const idx = this._lifted.indexOf(entry);
+        if (idx >= 0) this._lifted.splice(idx, 1);
+
+        if (entry.destroyId && entry.container) {
+            try { entry.container.disconnect(entry.destroyId); } catch (_) {}
+            entry.destroyId = 0;
+        }
+        if (entry.indicatorDestroyId && entry.indicator) {
+            try { entry.indicator.disconnect(entry.indicatorDestroyId); } catch (_) {}
+            entry.indicatorDestroyId = 0;
+        }
+
+        // When called from the indicators destroy signal the container is
+        // still alive but orphaned; remove it from our sub-row so the gap
+        // collapses immediately. When called from the containers destroy
+        // signal Clutter is already removing it, so skip.
+        if (evictContainer && entry.container) {
+            try {
+                const p = entry.container.get_parent();
+                if (p) p.remove_child(entry.container);
+            } catch (_) {}
+        }
+
+        try { this._applyPopupBounds(); } catch (_) {}
+    }
+
     _restore() {
         for (let i = this._lifted.length - 1; i >= 0; i--) {
-            const { container, originalParent, originalIndex, originalSize, destroyId } = this._lifted[i];
+            const entry = this._lifted[i];
+            const { container, originalParent, originalIndex, originalSize,
+                    destroyId, indicatorDestroyId, indicator } = entry;
 
             if (destroyId) {
                 try { container.disconnect(destroyId); } catch (_) {}
+            }
+            if (indicatorDestroyId && indicator) {
+                try { indicator.disconnect(indicatorDestroyId); } catch (_) {}
             }
 
             try {
