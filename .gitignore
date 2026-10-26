@@ -10,3 +10,6 @@ schemas/gschemas.compiled
 # OS
 .DS_Store
 Thumbs.db
+
+# Packed extension
+*.shell-extension.zip

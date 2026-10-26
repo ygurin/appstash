@@ -29,22 +29,24 @@ Targets GNOME Shell version:
 ```sh
 git clone https://github.com/ygurin/appstash.git
 cd appstash
-glib-compile-schemas schemas/
-ln -s "$PWD" ~/.local/share/gnome-shell/extensions/appstash@ygurin.github.io
+make install
 ```
+
+This compiles the schemas and symlinks the repo into `~/.local/share/gnome-shell/extensions/appstash@ygurin.github.io`.
 
 Then log out and log back in (Wayland requires this — there's no in-place reload). After login:
 
 ```sh
-gnome-extensions enable appstash@ygurin.github.io
-gnome-extensions prefs  appstash@ygurin.github.io
+make enable
+make prefs
 ```
+
+Other targets: `make disable`, `make pack` (builds a `.shell-extension.zip`), `make clean`.
 
 ## Uninstall
 
 ```sh
-gnome-extensions disable appstash@ygurin.github.io
-rm ~/.local/share/gnome-shell/extensions/appstash@ygurin.github.io
+make uninstall
 ```
 
 ## License
