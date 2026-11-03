@@ -17,7 +17,7 @@ Targets GNOME Shell version:
 - 50
 - 51
 
-It should work on any Linux distro running one of these versions. Tested with:
+It should work on any Linux distro running Gnome. Tested with:
 
 | Distro | GNOME Shell |
 |---|---|
@@ -26,8 +26,6 @@ It should work on any Linux distro running one of these versions. Tested with:
 | Fedora Silverblue 45 | 51 |
 | Arch Linux | 51 |
 | openSUSE Tumbleweed | 51 |
-
-The install script was tested on each of these in a container. The extension itself has only been run on a Fedora 45 desktop.
 
 ## What it does
 
