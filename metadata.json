@@ -4,6 +4,6 @@
     "uuid": "appstash@ygurin.github.io",
     "url": "https://github.com/ygurin/appstash",
     "settings-schema": "org.gnome.shell.extensions.appstash",
-    "shell-version": ["50"],
+    "shell-version": ["50", "51"],
     "version-name": "0.1.0"
 }

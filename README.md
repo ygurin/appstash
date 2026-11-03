@@ -14,7 +14,8 @@ In Gnome 2026 I could not find any extension that provides a System Tray to hide
 
 Targets GNOME Shell version:
 
-- 50
+- 50 (Fedora 44)
+- 51 (Fedora 45)
 
 ## What it does
 
@@ -25,6 +26,16 @@ Targets GNOME Shell version:
 - Icon size, "hide when empty", and which indicators to stash are all configurable.
 
 ## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ygurin/appstash/main/install.sh | bash
+```
+
+Then log out and log back in. The extension is enabled automatically. Open its settings with the cog icon in the popup, or with `gnome-extensions prefs appstash@ygurin.github.io`.
+
+### Install from a clone
+
+For working on the extension. Requires `make` (on Fedora: `sudo dnf install make`).
 
 ```sh
 git clone https://github.com/ygurin/appstash.git
@@ -46,8 +57,10 @@ Other targets: `make disable`, `make pack` (builds a `.shell-extension.zip`), `m
 ## Uninstall
 
 ```sh
-make uninstall
+curl -fsSL https://raw.githubusercontent.com/ygurin/appstash/main/install.sh | bash -s -- uninstall
 ```
+
+If you installed from a clone, run `make uninstall` instead.
 
 ## License
 

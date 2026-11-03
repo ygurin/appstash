@@ -20,7 +20,7 @@ export class StashController {
         this._subRows = [];
 
         this._row = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: false,
             y_expand: false,
             x_align: Clutter.ActorAlign.START,
@@ -214,7 +214,7 @@ export class StashController {
 
     _newSubRow() {
         const sub = new St.BoxLayout({
-            vertical: false,
+            orientation: Clutter.Orientation.HORIZONTAL,
             x_expand: false,
             y_expand: false,
             x_align: Clutter.ActorAlign.START,
