@@ -14,8 +14,10 @@ In Gnome 2026 I could not find any extension that provides a System Tray to hide
 
 Targets GNOME Shell version:
 
-- 50 (Fedora 44)
-- 51 (Fedora 45)
+- 50
+- 51
+
+Works on any Linux distro running one of these versions.
 
 ## What it does
 
@@ -31,11 +33,13 @@ Targets GNOME Shell version:
 curl -fsSL https://raw.githubusercontent.com/ygurin/appstash/main/install.sh | bash
 ```
 
+Requires `curl`, `tar` and `glib-compile-schemas`. The script tells you which package to install if one is missing.
+
 Then log out and log back in. The extension is enabled automatically. Open its settings with the cog icon in the popup, or with `gnome-extensions prefs appstash@ygurin.github.io`.
 
 ### Install from a clone
 
-For working on the extension. Requires `make` (on Fedora: `sudo dnf install make`).
+For working on the extension. Requires `make` and `glib-compile-schemas`.
 
 ```sh
 git clone https://github.com/ygurin/appstash.git

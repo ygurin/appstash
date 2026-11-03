@@ -19,7 +19,7 @@ die() {
 # unlike `gnome-extensions enable`, so it loads by itself on the next login.
 mark_enabled() {
     local current
-    current=$(gsettings get org.gnome.shell enabled-extensions) || return 1
+    current=$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null) || return 1
     case "$current" in
         *"'$UUID'"*) ;;
         '@as []' | '[]') gsettings set org.gnome.shell enabled-extensions "['$UUID']" ;;
@@ -31,7 +31,7 @@ mark_enabled() {
 # extension right away and puts stashed indicators back on the panel.
 mark_disabled() {
     local current
-    current=$(gsettings get org.gnome.shell enabled-extensions) || return 1
+    current=$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null) || return 1
     case "$current" in
         *"'$UUID'"*)
             gsettings set org.gnome.shell enabled-extensions \
@@ -41,19 +41,32 @@ mark_disabled() {
 }
 
 warn_if_unsupported() {
-    local metadata=$1 shell_version major
-    command -v gnome-shell >/dev/null || return 0
-    shell_version=$(gnome-shell --version | awk '{print $3}')
+    local metadata=$1 shell_version major supported
+    if ! command -v gnome-shell >/dev/null; then
+        echo "warning: gnome-shell not found; Appstash only runs on GNOME Shell." >&2
+        return 0
+    fi
+    shell_version=$(gnome-shell --version)
+    shell_version=${shell_version##* }
     major=${shell_version%%.*}
     if ! grep '"shell-version"' "$metadata" | grep -q "\"$major\""; then
-        echo "warning: GNOME Shell $major is not listed as supported; the extension may not load." >&2
+        supported=$(sed -n 's/.*"shell-version": *\[\(.*\)\].*/\1/p' "$metadata" | tr -d '"')
+        echo "warning: GNOME Shell $major is not supported (supported: $supported); the extension will not load." >&2
     fi
+}
+
+missing_tool() {
+    die "$1 is required but not installed. Install it with your package manager, for example:
+  Debian/Ubuntu: sudo apt install curl libglib2.0-bin
+  Fedora:        sudo dnf install curl glib2
+  Arch:          sudo pacman -S curl glib2
+  openSUSE:      sudo zypper install curl glib2-tools"
 }
 
 do_install() {
     local cmd tmp src stage
     for cmd in curl tar glib-compile-schemas; do
-        command -v "$cmd" >/dev/null || die "$cmd is required but not installed"
+        command -v "$cmd" >/dev/null || missing_tool "$cmd"
     done
 
     tmp=$(mktemp -d)
@@ -62,8 +75,8 @@ do_install() {
 
     echo "Downloading Appstash..."
     curl -fsSL "$TARBALL" | tar -xz -C "$tmp"
-    src=$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-    [ -n "$src" ] && [ -f "$src/metadata.json" ] || die "downloaded archive has no metadata.json"
+    src="$tmp/appstash-main"
+    [ -f "$src/metadata.json" ] || die "downloaded archive has no metadata.json"
 
     warn_if_unsupported "$src/metadata.json"
 

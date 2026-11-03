@@ -1,5 +1,5 @@
 UUID     := appstash@ygurin.github.io
-EXT_DIR  := $(HOME)/.local/share/gnome-shell/extensions
+EXT_DIR  := $(or $(XDG_DATA_HOME),$(HOME)/.local/share)/gnome-shell/extensions
 TARGET   := $(EXT_DIR)/$(UUID)
 SCHEMAS  := schemas/gschemas.compiled
 
